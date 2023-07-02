@@ -14,7 +14,8 @@ class PrioritizedMemory(Memory):
                  export_format: str = "pt",
                  export_directory: str = "",
                  replacement=True,
-                 priority: float=.99) -> None:
+                 priority: float=.99,
+                 linear=True) -> None:
         """Random sampling memory
 
         Sample a batch from memory randomly
@@ -46,6 +47,7 @@ class PrioritizedMemory(Memory):
 
         self._replacement = replacement
         self.priority = priority
+        self.linear = linear
 
     def sample(self,
                names: Tuple[str],
@@ -73,8 +75,10 @@ class PrioritizedMemory(Memory):
             sequence_indexes = torch.arange(0, self.num_envs * sequence_length, self.num_envs)
             size -= sequence_indexes[-1].item()
 
-        p = self.priority**torch.arange(0,size)
+        p = torch.linspace(self.priority,1,size) if self.linear else \
+            self.priority**torch.arange(0,size)
         p = p/torch.sum(p)
+        # p = torch.flip(p, [0])
         batch_size = min(size, batch_size)
         # generate random indexes
         if self._replacement:
