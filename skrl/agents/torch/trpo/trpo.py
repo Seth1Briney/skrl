@@ -100,12 +100,15 @@ class TRPO(Agent):
                          device=device,
                          cfg=_cfg)
 
-        try:
-            self.stable_method = cfg['stable_method']
+        self.stable_method = 'clip'
+        self.eps = 1e-6
+        if 'stable_method' in cfg.keys():
+            cfg['stable_method'] = cfg['stable_method'].lower()
+            assert  ('r' in cfg['stable_method']) ^ ('c' in cfg['stable_method'])
+            if 'r' in cfg['stable_method']:
+                self.stable_method = 'rand'
+        if 'eps' in cfg.keys():
             self.eps = cfg['eps']
-        except:
-            self.stable_method = 'const'
-            self.eps = 1e-6
         if self.stable_method=='rand':
             self.eps = self.eps/2
 
@@ -492,7 +495,7 @@ class TRPO(Agent):
 
         # compute the search direction using the conjugate gradient algorithm
         fplgd = flat_policy_loss_gradient.data
-        fplgd = torch.clip(fplgd, self.eps) if self.stable_method == 'const' else \
+        fplgd = torch.clip(fplgd, self.eps) if self.stable_method == 'clip' else \
             fplgd + (torch.rand(fplgd.shape, device=self.device)+1)*self.eps
         search_direction = conjugate_gradient(self.policy, sampled_states, fplgd,
                                                 num_iterations=self._conjugate_gradient_steps)
